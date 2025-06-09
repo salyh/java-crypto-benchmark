@@ -1,0 +1,4 @@
+*.sh
+.idea/
+dependency-reduced-pom.xml
+target/
