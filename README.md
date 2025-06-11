@@ -1,104 +1,135 @@
-# Java Cipher Benchmark
+# Java Cipher Crypto Benchmark
 
-## Introduction
+[JMH](https://github.com/openjdk/jmh) based Benchmark Suite for comparing encryption and decryption performance of symmetric ciphers in Java.
+The suite is designed to be easy to run and extend, allowing developers to quickly assess the performance of different cryptographic algorithms.
 
-* JMH based
-* Compares Libsodium AES GCM and XChaCha20-Poly1305 with JDK's AES GCM, AES CTR, and ChaCha20-Poly1305
-* via Libsodium binding [Tuweni](https://github.com/consensys/tuweni)
-* Easy to run and setup
-* Easy to extend
-* Next step: Integrate native OpenSSL implementations via [Apache Commons Crypto](https://commons.apache.org/proper/commons-crypto/)
+## Ciphers and modes
 
-## Run
+Compares the following ciphers:
 
-```
+* SunJCE AES GCM
+* SunJCE AES CTR
+* SunJCE ChaCha20-Poly1305
+* OpenSSL AES GCM (via Panama foreign API bindings)
+* OpenSSL AES CTR (via Panama foreign API bindings)
+* Libsodium AES GCM (via Panama foreign API bindings)
+* Libsodium XChaCha20-Poly1305 (via Panama foreign API bindings)
+
+in two modes:
+
+* File-based encryption (`cryptFile`)
+* In-memory encryption (`cryptInMemory`)
+
+## TL;DR
+
+Results:
+
+* SunJCE AES CTR is slow on Java ≤ 23 for large files/chunks due to a [bug in Java (fixed with Java 24)](https://bugs.openjdk.org/browse/JDK-8344766)
+* SunJCE AES GCM is fast on all JDKs and outperforms OpenSSL AES GCM
+* On Java 24 SunJCE AES CTR is fast and outperforms OpenSSL AES CTR
+* **X**ChaCha20-Poly1305 is generally slower compared to AES but has some security advantages (see below)
+* Libsodium AES GCM and SunJCE ChaCha20-Poly1305 are slow
+* Chunk size is important and mostly optimal between 64KB and 1MB
+
+## Recommendations
+
+* Use chunks sizes between 64KB and 1MB
+* SunJCE AES GCM is a great choice on all JDKs
+* Do not use SunJCE AES CTR on Java ≤ 23 due to poor performance, use OpenSSL AES CTR
+* If AES is not an option because of its limitations - use Libsodium **X**ChaCha20-Poly1305
+* Avoid SunJCE ChaCha20-Poly1305 - its slow and does not add much better security margins or better implementation safety
+
+## Raw Results
+
+_Lower scores are better_
+
+* [crypto-benchmark-result_1750146397444_Java21.json](crypto-benchmark-result_1750146397444_Java21.json)
+* [crypto-benchmark-result_1750146397444_Java21.txt](crypto-benchmark-result_1750146397444_Java21.txt)
+* [crypto-benchmark-result_1750198899771_Java24.json](crypto-benchmark-result_1750198899771_Java24.json)
+* [crypto-benchmark-result_1750198899771_Java24.txt](crypto-benchmark-result_1750198899771_Java24.txt)
+
+You can compare and analyze the JSON files via [JMH Visualizer](https://suresh.dev/jmh-bench-sample/) yourself
+
+## Build and Run on MacOS/Linux
+
+### Prequisites
+
+* JDK 21 or JDK 24
+* Maven 3.9.0 or higher
+* OpenSSL 3.0.0 or later (for OpenSSL ciphers)
+* libsodium 1.0.18 or later (for libsodium ciphers)
+* CPU with AES-NI support
+* On Linux make sure vm.max_map_count is sufficient: `sysctl -w vm.max_map_count=262144`
+
+### Compile and Execute
+
+```bash
+#For Java21
 mvn clean package
-java -jar target/crypto-benchmark-1.0.0-benchmarks.jar.jar
+java -Xmx16g -Xms16g --enable-preview -jar target/crypto-benchmark-1.0.0-runnable.jar
+
+#For Java 24 (Checkout the java24 branch)
+git checkout java24
+mvn clean package
+java -Xmx16g -Xms16g -jar target/crypto-benchmark-1.0.0-runnable.jar
 ```
 
-## Results
+## Extend
 
-Lower scores are better
+To add new ciphers, implement the `CryptoAlgorithm` interface.
 
-```
-# On Linux x86_64
-# Linux ubuntu-32gb-nbg1-1 6.8.0-52-generic #53-Ubuntu SMP PREEMPT_DYNAMIC Sat Jan 11 00:06:25 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
-# model name: AMD EPYC-Milan Processor
-# 8 cores
-# Libsodium 1.0.18 (via Tuweni JNA bindings)
+## Critical Warnings for AES
 
-# JDK 21.0.7, OpenJDK 64-Bit Server VM, 21.0.7+6-Ubuntu-0ubuntu124.04
-Benchmark                           (algorithm)  Mode  Cnt    Score   Error  Units
-CipherBenchmark.crypt             TuweniAES_GCM  avgt    5   34.246 ± 1.667  ms/op
-CipherBenchmark.crypt  TuweniXCHACHA20_POLY1305  avgt    5   38.660 ± 1.563  ms/op
-CipherBenchmark.crypt                   AES_GCM  avgt    5   22.252 ± 1.928  ms/op   ***
-CipherBenchmark.crypt                   AES_CTR  avgt    5  127.886 ± 7.593  ms/op
-CipherBenchmark.crypt         CHACHA20_POLY1305  avgt    5   98.759 ± 4.075  ms/op
+AES has significant security limitations that can lead to catastrophic failures if misused.
 
-# JDK 23, OpenJDK 64-Bit Server VM, 23+37-2369
-Benchmark                           (algorithm)  Mode  Cnt    Score   Error  Units
-CipherBenchmark.crypt             TuweniAES_GCM  avgt    5   34.419 ± 2.441  ms/op
-CipherBenchmark.crypt  TuweniXCHACHA20_POLY1305  avgt    5   38.134 ± 2.285  ms/op
-CipherBenchmark.crypt                   AES_GCM  avgt    5   17.546 ± 2.496  ms/op   ***
-CipherBenchmark.crypt                   AES_CTR  avgt    5  124.806 ± 7.046  ms/op
-CipherBenchmark.crypt         CHACHA20_POLY1305  avgt    5   97.280 ± 6.422  ms/op
+**Key Security Risks:**
 
+* **Nonce reuse is catastrophic** - reusing the same nonce with the same key completely breaks confidentiality
+* **Data volume limits** - there a maximum message sizes per nonce/key combinations and per key only
+* **Nonce size constraints** - 96-bit nonces (GCM) are short
+* **GHASH brittleness** - the underlying polynomial authentication is fragile and vulnerable to timing attacks (GCM)
+* **Implementation complexity** - proper nonce generation and key rotation are critical and error-prone
 
-# JDK 24.0.1, OpenJDK 64-Bit Server VM, 24.0.1+9-snap
-Benchmark                           (algorithm)  Mode  Cnt   Score   Error  Units
-CipherBenchmark.crypt             TuweniAES_GCM  avgt    5  34.388 ± 1.059  ms/op
-CipherBenchmark.crypt  TuweniXCHACHA20_POLY1305  avgt    5  38.105 ± 1.807  ms/op
-CipherBenchmark.crypt                   AES_GCM  avgt    5  17.645 ± 1.907  ms/op
-CipherBenchmark.crypt                   AES_CTR  avgt    5   9.542 ± 0.724  ms/op   ***
-CipherBenchmark.crypt         CHACHA20_POLY1305  avgt    5  98.207 ± 6.942  ms/op
+**Safe Usage Requirements:**
 
+* **Never reuse nonces** - implement robust nonce generation (counter-based or random with collision detection)
+* **Rotate keys regularly** - before approaching data volume limits
+* **Avoid AES software implementations** - AES-NI mitigates timing attack vulnerabilities in GHASH
+* **Consider XChaCha20-Poly1305** for applications requiring higher security margins and better implementation safety
 
-# On Mac M1 Max, 10 cores
-# -----------------------
+**References:**
 
-# JDK 21.0.7, OpenJDK 64-Bit Server VM, 21.0.7+6-LTS
-# Libsodium 1.0.20 (via Tuweni JNA bindings)
-Benchmark                           (algorithm)  Mode  Cnt    Score    Error  Units
-CipherBenchmark.crypt             TuweniAES_GCM  avgt    5   73,349 ±  2,973  ms/op
-CipherBenchmark.crypt  TuweniXCHACHA20_POLY1305  avgt    5  130,381 ±  1,901  ms/op
-CipherBenchmark.crypt                   AES_GCM  avgt    5   16,768 ±  0,302  ms/op
-CipherBenchmark.crypt                   AES_CTR  avgt    5  108,846 ±  1,349  ms/op
-CipherBenchmark.crypt         CHACHA20_POLY1305  avgt    5   78,008 ± 80,871  ms/op
+* [https://libsodium.gitbook.io/doc/secret-key_cryptography/aead](https://libsodium.gitbook.io/doc/secret-key_cryptography/aead)
+* [https://libsodium.gitbook.io/doc/secret-key_cryptography/aead/aes-256-gcm](https://libsodium.gitbook.io/doc/secret-key_cryptography/aead/aes-256-gcm)
+* [https://csrc.nist.gov/csrc/media/Events/2023/third-workshop-on-block-cipher-modes-of-operation/documents/accepted-papers/Practical%20Challenges%20with%20AES-GCM.pdf](https://csrc.nist.gov/csrc/media/Events/2023/third-workshop-on-block-cipher-modes-of-operation/documents/accepted-papers/Practical%20Challenges%20with%20AES-GCM.pdf)
+* [https://eprint.iacr.org/2024/051.pdf](https://eprint.iacr.org/2024/051.pdf)
+* [https://soatok.blog/2020/05/13/why-aes-gcm-sucks/](https://soatok.blog/2020/05/13/why-aes-gcm-sucks/)
 
+## Analysis
+
+### Test Environment
+- **Platform**: Linux Ubuntu 22.04 LTS (x86_64)
+- **Processor**: AMD EPYC-Milan, 8 cores
+- **JVM**: 16GB heap
+- **Libraries**: Libsodium 1.0.18, OpenSSL 3.0.13
+- **Benchmark**: JMH 1.37, 4 warmup iterations, 5 measurement iterations
+
+### Java 21 (OpenJDK 21.0.7)
+
+**File-based comparison OpenSSL AES GCM vs. SunJCE AES GCM**
+
+SunJCE AES GCM on par and even outperforms OpenSSL AES GCM sometimes
+
+![GCM-Comparison.png](img/GCM-Comparison.png)
 
 
-# JDK 24.0.1, OpenJDK 64-Bit Server VM, 24.0.1+9
-# Libsodium 1.0.20 (via Tuweni JNA bindings)
-Benchmark                           (algorithm)  Mode  Cnt    Score    Error  Units
-CipherBenchmark.crypt             TuweniAES_GCM  avgt    5   70,273 ±  1,979  ms/op
-CipherBenchmark.crypt  TuweniXCHACHA20_POLY1305  avgt    5  131,739 ±  2,226  ms/op
-CipherBenchmark.crypt                   AES_GCM  avgt    5   15,865 ±  0,092  ms/op
-CipherBenchmark.crypt                   AES_CTR  avgt    5    9,862 ±  0,709  ms/op
-CipherBenchmark.crypt         CHACHA20_POLY1305  avgt    5   77,411 ± 83,493  ms/op
-```
+**In-Memory comparison**
 
-### Conclusion
+![InMemoryJava21.png](img/InMemoryJava21.png)
 
-* Java AES CTR is slow on Java <= 23, but fast on Java 24
-* Java AES GCM is fast on all JDKs, but Java AES CTR is twice as fast on Java 24
-* If AES is not an option use Tuweni/Libsodium XCHACHA20_POLY1305 (on Linux two time slower than AES GCM)
-* Do not use Java ChaCha20-Poly1305 or Tuweni/Libsodium AES GCM
+### Java 24 (OpenJDK 24.0.1)
 
-### Recommendations
+Compared to the figures for Java 21 we see a massive speedup of AES CTR because of the [this bug in Java fixed with Java 24](https://bugs.openjdk.org/browse/JDK-8344766).
+We also see slight improvements for all other Algorithms (with some outliers).
 
-(We still need to check the native OpenSSL performance)
-* Do not use AES CTR on Java <= 23
-* If speed is important and you can omit authentication (or implement it otherwise) use CTR with Java 24
-* If you can live with AES GCM limitations (see below) use it, if not use Tuweni/Libsodium XCHACHA20_POLY1305
-
-### A warning on AES GCM
-
-AES GCM is a beast and can be dangerous.
-
-See https://soatok.blog/2020/05/13/why-aes-gcm-sucks/
-See https://libsodium.gitbook.io/doc/secret-key_cryptography/aead/aes-256-gcm
-
-Most important:
-* Nonce reuse breaks the security
-* Limitations on the maximum amount of data that can be encrypted with the same key/nonce
-* Short Nonces
+![Java21_vs_Java24_AES_CTR](img/Java21_vs_Java24_AES_CTR.png)

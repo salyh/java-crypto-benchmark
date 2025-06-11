@@ -2,3 +2,8 @@
 .idea/
 dependency-reduced-pom.xml
 target/
+*.bin
+*.enc
+*.dec
+
+*.log
