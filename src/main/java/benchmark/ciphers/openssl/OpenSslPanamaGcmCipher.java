@@ -231,15 +231,15 @@ public final class OpenSslPanamaGcmCipher {
                     throw new OpenSslException("EVP_aes_256_gcm failed");
                 }
 
-                MemorySegment keySeg = arena.allocateArray(ValueLayout.JAVA_BYTE, key);
-                MemorySegment ivSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, iv);
+                MemorySegment keySeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, key);
+                MemorySegment ivSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, iv);
 
                 int rc = (int) EVP_EncryptInit_ex.invoke(ctx, cipher, MemorySegment.NULL, keySeg, ivSeg);
                 if (rc != 1) {
                     throw new OpenSslException("EVP_EncryptInit_ex failed");
                 }
 
-                MemorySegment inSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, input);
+                MemorySegment inSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, input);
                 MemorySegment outSeg = arena.allocate(inputLen + AES_BLOCK_SIZE);
                 MemorySegment outLen = arena.allocate(ValueLayout.JAVA_INT);
 
@@ -301,15 +301,15 @@ public final class OpenSslPanamaGcmCipher {
                     throw new OpenSslException("EVP_aes_256_gcm failed");
                 }
 
-                MemorySegment keySeg = arena.allocateArray(ValueLayout.JAVA_BYTE, key);
-                MemorySegment ivSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, iv);
+                MemorySegment keySeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, key);
+                MemorySegment ivSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, iv);
 
                 int rc = (int) EVP_DecryptInit_ex.invoke(ctx, cipher, MemorySegment.NULL, keySeg, ivSeg);
                 if (rc != 1) {
                     throw new OpenSslException("EVP_EncryptInit_ex failed");
                 }
 
-                MemorySegment inSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, Arrays.copyOf(input, inputLen - GCM_TAG_LEN));
+                MemorySegment inSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, Arrays.copyOf(input, inputLen - GCM_TAG_LEN));
                 MemorySegment outSeg = arena.allocate(inputLen + AES_BLOCK_SIZE - GCM_TAG_LEN);
                 MemorySegment outLen = arena.allocate(ValueLayout.JAVA_INT);
 
@@ -320,7 +320,7 @@ public final class OpenSslPanamaGcmCipher {
 
                 int bytesWritten = outLen.get(ValueLayout.JAVA_INT, 0);
 
-                MemorySegment tagSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, Arrays.copyOfRange(input, inputLen - GCM_TAG_LEN, inputLen));
+                MemorySegment tagSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, Arrays.copyOfRange(input, inputLen - GCM_TAG_LEN, inputLen));
                 rc = (int) EVP_CIPHER_CTX_ctrl.invoke(ctx, 17, GCM_TAG_LEN, tagSeg);
                 if (rc != 1) {
                     throw new OpenSslException("EVP_CIPHER_CTX_ctrl failed");

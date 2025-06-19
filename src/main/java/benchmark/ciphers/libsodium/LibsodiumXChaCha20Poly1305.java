@@ -113,11 +113,11 @@ public class LibsodiumXChaCha20Poly1305 {
 
         try (Arena arena = Arena.ofConfined()) {
 
-            MemorySegment inSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, input);
+            MemorySegment inSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, input);
             MemorySegment outSeg = arena.allocate(inputLen + TAG_SIZE);
             MemorySegment outLen = arena.allocate(ValueLayout.JAVA_LONG);
-            MemorySegment keySeg = arena.allocateArray(ValueLayout.JAVA_BYTE, key);
-            MemorySegment ivSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, iv);
+            MemorySegment keySeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, key);
+            MemorySegment ivSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, iv);
 
             int rc = (int) crypto_aead_xchacha20poly1305_ietf_encrypt.invoke(
                     outSeg,
@@ -154,11 +154,11 @@ public class LibsodiumXChaCha20Poly1305 {
 
         try (Arena arena = Arena.ofConfined()) {
 
-            MemorySegment inSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, input);
+            MemorySegment inSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, input);
             MemorySegment outSeg = arena.allocate(inputLen);
             MemorySegment outLen = arena.allocate(ValueLayout.JAVA_LONG);
-            MemorySegment keySeg = arena.allocateArray(ValueLayout.JAVA_BYTE, key);
-            MemorySegment ivSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, iv);
+            MemorySegment keySeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, key);
+            MemorySegment ivSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, iv);
 
             int rc = (int) crypto_aead_xchacha20poly1305_ietf_decrypt.invoke(
                     outSeg,

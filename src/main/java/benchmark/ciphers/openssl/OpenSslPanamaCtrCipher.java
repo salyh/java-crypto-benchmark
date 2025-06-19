@@ -161,15 +161,15 @@ public final class OpenSslPanamaCtrCipher {
                     throw new OpenSslException("EVP_aes_256_ctr failed");
                 }
 
-                MemorySegment keySeg = arena.allocateArray(ValueLayout.JAVA_BYTE, key);
-                MemorySegment ivSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, iv);
+                MemorySegment keySeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, key);
+                MemorySegment ivSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, iv);
 
                 int rc = (int) EVP_EncryptInit_ex.invoke(ctx, cipher, MemorySegment.NULL, keySeg, ivSeg);
                 if (rc != 1) {
                     throw new OpenSslException("EVP_EncryptInit_ex failed");
                 }
 
-                MemorySegment inSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, input);
+                MemorySegment inSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, input);
                 MemorySegment outSeg = arena.allocate(inputLen + AES_BLOCK_SIZE);
                 MemorySegment outLen = arena.allocate(ValueLayout.JAVA_INT);
 
@@ -209,15 +209,15 @@ public final class OpenSslPanamaCtrCipher {
                     throw new OpenSslException("EVP_aes_256_ctr failed");
                 }
 
-                MemorySegment keySeg = arena.allocateArray(ValueLayout.JAVA_BYTE, key);
-                MemorySegment ivSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, iv);
+                MemorySegment keySeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, key);
+                MemorySegment ivSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, iv);
 
                 int rc = (int) EVP_EncryptInit_ex.invoke(ctx, cipher, MemorySegment.NULL, keySeg, ivSeg);
                 if (rc != 1) {
                     throw new OpenSslException("EVP_EncryptInit_ex failed");
                 }
 
-                MemorySegment inSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, input);
+                MemorySegment inSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, input);
                 MemorySegment outSeg = arena.allocate(inputLen + AES_BLOCK_SIZE);
                 MemorySegment outLen = arena.allocate(ValueLayout.JAVA_INT);
 
